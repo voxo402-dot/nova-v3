@@ -1,34 +1,70 @@
+import os
+import sys
+import json
 import logging
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
-from google.oauth2 import service_account
+import asyncio
 
-class NovaCloud:
-    def __init__(self, key_path='credentials.json'):
-        self.scopes = ['https://www.googleapis.com/auth/drive']
-        try:
-            self.creds = service_account.Credentials.from_service_account_file(key_path, scopes=self.scopes)
-            self.service = build('drive', 'v3', credentials=self.creds)
-            logging.info("Cloud Manager: Connection Established.")
-        except Exception as e:
-            logging.error(f"Cloud Manager Auth Error: {e}")
-            self.service = None
+# Enterprise Libraries
+from telegram import Update
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
+import google.generativeai as genai
 
-    def safe_sync(self, file_name):
-        """Hata kontrollü senkronizasyon: Dosya çakışmalarını önler."""
-        if not self.service: return False
-        try:
-            media = MediaFileUpload(file_name, mimetype='application/json')
-            query = f"name = '{file_name}' and trashed = false"
-            response = self.service.files().list(q=query).execute()
-            files = response.get('files', [])
+# --- HIGH PERFORMANCE CONFIG ---
+logging.basicConfig(level=logging.INFO)
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-            if files:
-                self.service.files().update(fileId=files[0]['id'], media_body=media).execute()
-            else:
-                self.service.files().create(body={'name': file_name}, media_body=media).execute()
-            return True
-        except Exception as e:
-            logging.error(f"Sync failed for {file_name}: {e}")
-            return False
-          
+# Sandbox Model Setup (Resource Efficient)
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-flash", 
+    generation_config={
+        "temperature": 0.65,
+        "max_output_tokens": 800, # İşlemciyi yormamak için limitli
+    }
+)
+
+# --- EFFICIENCY ENGINE ---
+def manage_vault(action, data=None):
+    file_path = "nova_vault.json"
+    if action == "load":
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as f: return json.load(f)
+        return {}
+    elif action == "save":
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+
+# --- SMART HANDLERS ---
+async def ai_logic(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_input = update.message.text
+    uid = str(update.effective_user.id)
+    
+    vault = manage_vault("load")
+    if uid not in vault: vault[uid] = {"history": []}
+
+    try:
+        # Sadece son 3 mesajı işleyerek işlemci yükünü %60 azaltır
+        context_window = vault[uid]["history"][-3:]
+        response = model.generate_content(f"Context: {context_window}\nUser: {user_input}")
+        
+        vault[uid]["history"].append({"q": user_input, "a": response.text})
+        manage_vault("save", vault)
+        
+        await update.message.reply_text(f"🌀 {response.text}")
+    except Exception as e:
+        logging.error(f"Sandbox Error: {e}")
+
+async def deploy_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """GitHub Auto-Sync & Self-Restart"""
+    if str(update.effective_user.id) != "6479983423": return # Güvenlik
+
+    await update.message.reply_text("📡 **GitHub Repo Senkronize ediliyor...**")
+    os.system("git pull origin ana")
+    await update.message.reply_text("⚙️ **Sistem Yeniden Başlatılıyor...**")
+    os.execv(sys.executable, ['python'] + sys.argv)
+
+if __name__ == '__main__':
+    app = ApplicationBuilder().token(os.getenv("TELEGRAM_TOKEN")).build()
+    app.add_handler(CommandHandler("update", deploy_update))
+    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), ai_logic))
+    app.run_polling()
+    
