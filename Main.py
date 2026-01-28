@@ -1,76 +1,45 @@
-import logging
 import asyncio
+import logging
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 import google.generativeai as genai
 
-# --- [GÜVENLİK VE KİMLİK MÜHÜRÜ] ---
-# Profesyonel Düzey: Tokenlar doğrudan sisteme mühürlenmiştir.
+# --- [KRİTİK MÜHÜR] ---
 TELEGRAM_TOKEN = "7414902120:AAFeU-1X0L5A60yO8YkC84VjO0WfX8Z7M7M"
-GEMINI_API_KEY = "BURAYA_GEMINI_API_KEYINI_YAZ" # Kendi Gemini keyini buraya gir
-AUTHORIZED_USER_ID = 6479983423 # Sadece neonx45 erişebilir.
+GEMINI_API_KEY = "BURAYA_GEMINI_KEYINI_YAZ" # Kendi Key'ini buraya yapıştır
+AUTHORIZED_USER_ID = 6479983423
 
-# --- [AI MOTORU YAPILANDIRMASI] ---
+# --- [AI MOTORU: ULTRA HIZ] ---
 genai.configure(api_key=GEMINI_API_KEY)
-generation_config = {
-    "temperature": 0.4, # Stabil ve net yanıtlar
-    "top_p": 0.9,
-    "max_output_tokens": 1024,
-}
-
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash", # En hızlı ve en az CPU tüketen model
-    generation_config=generation_config,
-    system_instruction=(
-        "Kimlik: Nova V3 Optimus Ünitesi. "
-        "Karakter: Buz gibi soğuk, teknik, profesyonel ve duygusuz. "
-        "Görev: Kullanıcın neonx45 için veri analizi yap ve rapor sun. "
-        "Format: Her yanıtın başında [OPTIMUS CORE V25] etiketi bulunmalı."
-    )
+    model_name="gemini-1.5-flash", # Hız ve düşük CPU için en iyisi
+    system_instruction="Sen Nova V3 Optimus ünitesisin. Ruhsuz, buz gibi soğuk ve %100 profesyonel bir teknik analistsin."
 )
 
-# --- [SİSTEM MANTIĞI & CPU KORUMA] ---
-
-async def engine_logic(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Yetki Kontrolü
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Güvenlik Kilidi
     if update.effective_user.id != AUTHORIZED_USER_ID:
-        await update.message.reply_text("❌ ERİŞİM ENGELLENDİ: Yetkisiz Giriş.")
         return
 
-    # İşlemci Dostu Yükleme Efekti
-    status_msg = await update.message.reply_text("<code>[SEKTÖR 25 TARANIYOR...]</code>", parse_mode='HTML')
+    # İşlemci Dostu Yükleme
+    status = await update.message.reply_text("<code>[SEKTÖR 25 ANALİZ EDİLİYOR...]</code>", parse_mode='HTML')
 
     try:
-        # Asenkron AI İşleme (Sistemi dondurmaz)
-        user_input = update.message.text
-        response = await asyncio.to_thread(model.generate_content, user_input)
+        user_text = update.message.text
+        # Asenkron İşleme (Donmayı Engeller)
+        response = await asyncio.to_thread(model.generate_content, user_text)
         
-        # Profesyonel Rapor Çıktısı
-        final_report = (
-            f"<b>--- [OPTIMUS REPORT V25] ---</b>\n\n"
-            f"{response.text}\n\n"
-            f"<b>--- [DURUM: GÜVENLİ | VERİMLİLİK: %100] ---</b>"
-        )
-        
-        await status_msg.edit_text(final_report, parse_mode='HTML')
-
+        report = f"<b>[OPTIMUS CORE V25]</b>\n\n{response.text}"
+        await status.edit_text(report, parse_mode='HTML')
     except Exception as e:
-        await status_msg.edit_text(f"⚠️ Kritik Hata: {str(e)}")
-
-# --- [ANA ÇALIŞTIRICI] ---
+        await status.edit_text(f"⚠️ Sistem Hatası: {str(e)}")
 
 if __name__ == '__main__':
-    # Loglama yapılandırması (Hata ayıklama için)
-    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-    
-    # Telegram Uygulama Başlatıcı
+    # İşlemciyi Koruyan Yapılandırma
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
     
-    # Sadece metin mesajlarını dinleyen verimli handler
-    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), engine_logic))
-    
-    print("🚀 Optimus Prime V25: Çekirdek Aktif ve Güvenli")
-    
-    # PythonAnywhere Tarpit (CPU Sınırı) Koruması: 5 saniyelik sorgu aralığı
+    print("🚀 Optimus Prime V25: Sistem Çevrimiçi")
+    # poll_interval=5.0: PythonAnywhere CPU koruması (Tarpit önleyici)
     app.run_polling(poll_interval=5.0, drop_pending_updates=True)
     
