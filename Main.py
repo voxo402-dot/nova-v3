@@ -5,69 +5,69 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 import google.generativeai as genai
 
-# --- [KRİTİK YAPILANDIRMA] ---
-# Profesyonel Düzeyde Güvenlik ve Kimlik Doğrulama
-TELEGRAM_TOKEN = "7414902120:AAFeU-1X0L5A60yO8YkC84VjO0WfX8Z7M7M" # Tokenını buraya mühürledim
-GEMINI_API_KEY = "BURAYA_GEMINI_KEYINI_YAZ" # Kendi Gemini API Key'ini buraya yapıştır
-AUTHORIZED_USER_ID = 6479983423 # Sadece senin erişimin için kilitlendi
+# --- [PROFESYONEL YAPILANDIRMA & GÜVENLİK] ---
+# Tokenları doğrudan buraya mühürlüyoruz (Gizli değişken hatalarını bitirir)
+TELEGRAM_TOKEN = "7414902120:AAFeU-1X0L5A60yO8YkC84VjO0WfX8Z7M7M"
+GEMINI_API_KEY = "BURAYA_GEMINI_KEYINI_YAZ"
+AUTHORIZED_USER_ID = 6479983423  # neonx45 Güvenlik Kilidi
 
-# AI Motoru Yapılandırması (Enterprise Seviyesi)
+# AI Çekirdek Ayarları
 genai.configure(api_key=GEMINI_API_KEY)
 generation_config = {
-    "temperature": 0.4,  # Daha mantıklı ve soğuk yanıtlar
-    "top_p": 0.9,
-    "max_output_tokens": 1024,
-    "response_mime_type": "text/plain",
+    "temperature": 0.3,      # Daha soğuk ve profesyonel yanıtlar
+    "top_p": 0.85,
+    "max_output_tokens": 1500, # Daha derin analiz kapasitesi
 }
 
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
+    model_name="gemini-1.5-flash", # Hız ve düşük CPU için en iyisi
     generation_config=generation_config,
     system_instruction=(
-        "Sen Nova V3 Optimus ünitesisin. Kimliğin: Buz gibi soğuk, ruhsuz ve %100 profesyonel. "
-        "Kullanıcın neonx45'e sadece teknik analiz ve üst düzey raporlar sunarsın. "
-        "Gereksiz nezaket cümlelerinden kaçın, doğrudan veriye odaklan."
+        "Sen Nova V3 Optimus ünitesisin. Kimliğin: Buz gibi soğuk, ruhsuz ve %100 teknik profesyonel. "
+        "Kullanıcın neonx45 için interneti tarar ve en saf bilgiyi sunarsın. "
+        "Yanıtlarını her zaman teknik bir rapor formatında [SEKTÖR 25] başlığıyla ver."
     )
 )
 
-# --- [SİSTEM FONKSİYONLARI] ---
+# --- [OPTİMİZE EDİLMİŞ MOTOR MANTIĞI] ---
 
 async def engine_logic(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Siber Güvenlik Duvarı
+    # GÜVENLİK DUVARI: Yetkisiz girişi anında engeller
     if update.effective_user.id != AUTHORIZED_USER_ID:
-        await update.message.reply_text("❌ ERİŞİM REDDEDİLDİ: Yetkisiz Terminal Girişi.")
+        await update.message.reply_text("❌ ERİŞİM REDDEDİLDİ: Yetkisiz Terminal.")
         return
 
-    # Verimlilik Modu: İşlemciyi yormayan görsel efekt
-    loading_msg = await update.message.reply_text("<code>[SEKTÖR 25 TARANIYOR...]</code>", parse_mode='HTML')
+    # ECO-MOD: İşlemciyi yormayan düşük seviyeli görsel efekt
+    loading = await update.message.reply_text("<code>[ANALİZ EDİLİYOR...]</code>", parse_mode='HTML')
 
     try:
-        # Yapay Zeka Analizi
-        user_input = update.message.text
-        response = model.generate_content(user_input)
+        # Yapay Zeka İşleme
+        user_query = update.message.text
+        response = await asyncio.to_thread(model.generate_content, user_query)
         
-        # Profesyonel Terminal Görünümü (Maksimum Verim, Minimum CPU)
-        final_report = (
-            f"--- <b>[OPTIMUS REPORT V25]</b> ---\n\n"
+        # Üst Düzey Terminal Tasarımı
+        report = (
+            f"--- <b>[OPTIMUS CORE V25 REPORT]</b> ---\n\n"
             f"{response.text}\n\n"
-            f"--- <b>[DATA ENCRYPTED]</b> ---"
+            f"--- <b>[STATUS: SECURE | CPU: ECO]</b> ---"
         )
         
-        await loading_msg.edit_text(final_report, parse_mode='HTML')
+        await loading.edit_text(report, parse_mode='HTML')
 
     except Exception as e:
-        await loading_msg.edit_text(f"⚠️ Kritik Hata: {str(e)}")
+        await loading.edit_text(f"⚠️ Kritik Sistem Hatası: {str(e)}")
 
-# --- [ANA MOTOR BAŞLATICI] ---
+# --- [ANA ÇALIŞTIRICI] ---
 
 if __name__ == '__main__':
-    # İşlemci dostu asenkron yapı
+    # Enterprise seviyesinde uygulama başlatıcı
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     
-    # Filtreleme: Botun sadece metin mesajlarına ve senin komutlarına odaklanmasını sağlar
+    # Sadece metin mesajlarını dinleyerek RAM tasarrufu sağlar
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), engine_logic))
     
-    print("🚀 Optimus Prime V25: Sistem Çevrimiçi ve Güvenli")
-    # poll_interval=5.0: PythonAnywhere CPU koruma kilidi
-    app.run_polling(poll_interval=5.0)
+    print("🚀 Optimus Prime V25: Sistem Çevrimiçi")
+    
+    # CPU Koruma Kilidi: PythonAnywhere Tarpit koruması için 5.0 saniye bekleme
+    app.run_polling(poll_interval=5.0, drop_pending_updates=True)
     
