@@ -1,0 +1,15 @@
+# Python environment
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Secrets (Bu dosyalar asla GitHub'a gitmez)
+credentials.json
+Xor.env
+config.ini
+
+# Local Database
+*.json
+*.log
